@@ -54,7 +54,7 @@ def correct_formats(data):
     data.columns = cols
     data['data'] = pd.to_datetime(data['data']).dt.strftime('%Y-%m-%d')
     data['data'] = pd.to_datetime(data['data'])
-    data['id_sku'] = data['id_sku'].astype(object)
+    data['id_sku'] = data['id_sku'].astype( str )
 
     return data
 
@@ -65,14 +65,11 @@ def create_new_attributes(data):
     # Coluna nome_mes
     data['nome_mes'] = data['data'].apply( lambda x: calendar.month_name[x.month])
 
-    # Coluna com o % de Cacau
-    data['%Cacau'] = data['sku'].apply(lambda x: re.search("\d+", x)[0] if '% Cacau' in x else 'NA')
-
     return data
 
 # create datasets =========================================
 def create_products_dataset(data):
-    produtos = data[[ 'id_sku', 'sku', 'valor_unitario_sku', '%Cacau']].drop_duplicates(subset='id_sku', keep='first').reset_index(drop=True)
+    produtos = data[[ 'id_sku', 'valor_unitario_sku']].drop_duplicates(subset='id_sku', keep='first').reset_index(drop=True)
     produtos.to_csv('datasets/produtos.csv', index=False)
     
     return produtos
@@ -82,39 +79,6 @@ def create_sales_dataset(data):
     vendas.to_csv('datasets/vendas.csv', index=False)
     
     return vendas
-
-def create_bitter_dataset(data):
-    chocolates_amargos = data[data['%Cacau'] != 'NA'].reset_index(drop=True)
-    chocolates_amargos['%Cacau'] = chocolates_amargos['%Cacau'].astype(int)
-    chocolates_amargos = chocolates_amargos[chocolates_amargos['%Cacau'] >= 70].reset_index(drop=True)
-    chocolates_amargos.to_csv('datasets/chocolates_amargos.csv', index=False)
-    
-    return chocolates_amargos
-
-def target_cotumers(data):
-    st.markdown("""---""")
-    st.markdown("<h3 style='text-align: center;'>Clientes Alvo para Campanha dos Nvos Produtos</h3>", unsafe_allow_html=True)
-    combined = pd.merge(bitter_dataset['id_sku'], data, on='id_sku', how='right')
-    target_clients = combined[combined['%Cacau'] != 'NA']
-    target_clients['%Cacau'] = target_clients['%Cacau'].astype( int )
-    target_clients = target_clients[target_clients['%Cacau'] >=70]
-    target_clients.drop_duplicates(subset='id_compra', keep='first', inplace=True)
-    target_clients.reset_index(drop=True, inplace=True)
-    target_clients = target_clients[['cliente', 'id_compra']].groupby('cliente').count().sort_values('id_compra', ascending=False).head(50)
-    target_clients.columns = ['Qtd. de Compras']
-    target_clients.to_csv('datasets/target_costumers.csv')
-    st.dataframe(target_clients, height=300)
-
-    # @st.cache
-    # # def convert_df(df):
-    # #     # IMPORTANT: Cache the conversion to prevent computation on every rerun
-    csv = target_clients.to_csv().encode('utf-8')
-    st.download_button( "Download data as CSV",
-                        data=csv,
-                        file_name='target_clients.csv',
-                        mime='text/csv')
-
-    return None
 
 # Measures ============================================================
 def create_measures(data):
@@ -145,14 +109,14 @@ def create_measures(data):
 # Data Overview
 # =======================================================================
 def data_overview(data):
-    c1, c2 = st.columns((1,40))
+    # c1, c2 = st.columns((1,40))
 
-    with c1:    # Dengo Logo
-        photo = Image.open('dashboards/misc/DENGO-LOGOTIPO_terra.png')
-        st.image(photo, width=200)
+    # with c1:    # Dengo Logo
+    #     photo = Image.open('dashboards/misc/DENGO-LOGOTIPO_terra.png')
+    #     st.image(photo, width=200)
 
-    with c2:    # Opening Title
-        st.markdown("<h2 style='text-align: center;'>Dashboard de Vendas 2022</h2>", unsafe_allow_html=True)
+    # with c2:    # Opening Title
+    st.markdown("<h2 style='text-align: center;'>Dashboard de Vendas 2022</h2>", unsafe_allow_html=True)
     st.markdown("""---""")
 
     c1, c2, c3 = st.columns((1,1,1))
@@ -162,7 +126,7 @@ def data_overview(data):
     with c2:
         card(title="R$ {:,}".format(ticket_medio), text="Ticket Médio", image='')
     with c3:
-        produto_mais_vendido = data[['quantidade_sku', 'sku']].groupby('sku').sum().sort_values('quantidade_sku', ascending=False).reset_index()['sku'][0]
+        produto_mais_vendido = data[['quantidade_sku', 'id_sku']].groupby('id_sku').sum().sort_values('quantidade_sku', ascending=False).reset_index()['id_sku'][0]
         card(title=produto_mais_vendido, text="Produto Best Seller", image='')
 
 def cohort_period(data):
@@ -222,8 +186,9 @@ def costumer_behavior(data):
 def top_five_products(data): # Top 5 combinações d eprodutos vendido juntos
     st.markdown("""---""")
     st.markdown("<h3 style='text-align: center;'>Análise de Produtos</h3>", unsafe_allow_html=True)
-    bundle = data[data['id_compra'].duplicated(keep=False)];
-    bundle['bundle'] = bundle.groupby('id_compra')['sku'].transform(lambda x: ', '.join(x));
+    bundle = data[data['id_compra'].duplicated(keep=False)]
+    bundle['id_sku'] = bundle['id_sku'].astype( str )
+    bundle['bundle'] = bundle.groupby('id_compra')['id_sku'].transform(lambda x: ', '.join(x));
     bundle = bundle[['id_compra', 'bundle']].drop_duplicates()
     count = Counter()
 
@@ -437,7 +402,7 @@ if __name__ == '__main__':
     # =======================================================================================
 
     # load dataset
-    data = get_data('datasets/dengo_base.xlsx')
+    data = get_data('datasets/chocolates_base.xlsx')
 
     # =======================================================================================
     # Transformation
@@ -456,9 +421,6 @@ if __name__ == '__main__':
     # create_sales_dataset(data)
     vendas = create_sales_dataset(data)
 
-    # create_bitter_dataset(products_dataset)
-    bitter_dataset = create_bitter_dataset(products_dataset)
-
     # sidebar filters
     # sidebar_filters(data)
 
@@ -476,5 +438,3 @@ if __name__ == '__main__':
     top_five_products(data)
     rfm = rfm_analisys(data)
     seguimentaton(data)
-    target_cotumers(data)
-
