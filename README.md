@@ -13,3 +13,7 @@
 * [Pessoas Contribuidoras](#pessoas-contribuidoras) 
 * [Pessoas Desenvolvedoras do Projeto](#pessoas-desenvolvedoras) 
 * [Licença](#licença)[Conclusão](#conclusão)
+
+# Descrição do Projeto
+
+bla bla bla
